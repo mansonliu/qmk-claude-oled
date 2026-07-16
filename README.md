@@ -124,6 +124,85 @@ Claude Code 的 Notification 事件除了權限請求／提問，還包含「閒
 
 多 session：最後推送者蓋掉顯示（last-write-wins）。
 
+## Codex 端
+
+`host/codex_hook.py` 讀取 Codex hook 的 stdin JSON，並呼叫既有的
+`host/zima_push.py`，不自行實作 HID：
+
+- `SessionStart`：設定模型名、刷新用量、設為 `idle`
+- `UserPromptSubmit`：設定模型名、刷新用量、設為 `working`
+- `PermissionRequest`：設定模型名、刷新用量、設為 `waiting`
+- `PostToolUse`：刷新用量、回到 `working`（授權工具執行完畢後的近似值）
+- `Stop`：設定模型名、刷新用量、設為 `idle`
+
+用量取 `transcript_path` JSONL 最後一筆 `token_count`：300 分鐘視窗映射成
+5h，10080 分鐘視窗映射成 7d；缺值或解析失敗送 `255`（未知）。為避免 hook
+因大型 transcript 變慢，只搜尋檔案尾端 1 MiB。
+
+在 `~/.codex/config.toml` 加入以下設定（若 repo 不在
+`$HOME/git/qmk-claude-oled`，請替換每個 command 的絕對位置）：
+
+```toml
+[features]
+hooks = true
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = 'python3 "$HOME/git/qmk-claude-oled/host/codex_hook.py" session'
+timeout = 3
+
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command = 'python3 "$HOME/git/qmk-claude-oled/host/codex_hook.py" working'
+timeout = 3
+
+[[hooks.PermissionRequest]]
+
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = 'python3 "$HOME/git/qmk-claude-oled/host/codex_hook.py" waiting'
+timeout = 3
+
+[[hooks.PostToolUse]]
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = 'python3 "$HOME/git/qmk-claude-oled/host/codex_hook.py" working'
+timeout = 3
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = 'python3 "$HOME/git/qmk-claude-oled/host/codex_hook.py" idle'
+timeout = 3
+```
+
+安裝與啟用：
+
+1. 確認 `python3 host/zima_push.py status idle` 可執行；鍵盤未插時靜默
+   exit 0 是正常行為。若尚未安裝相依套件，執行 `brew install hidapi` 與
+   `python3 -m pip install hid`。
+2. 將上方片段合併到 `~/.codex/config.toml`，不要重複建立已有的
+   `[features]` table；已有時只加 `hooks = true`。
+3. 重開 Codex CLI，執行 `/hooks`，review 並 trust 這五個 hook 定義。
+4. 不插鍵盤也可執行 `python3 -m unittest host/test_codex_hook.py` 測試 model
+   與 transcript 用量解析。
+
+限制：Codex 目前沒有一般性的「正在等使用者回答」hook，因此可靠的
+`waiting` 只有權限請求；agent 在文字中提問並結束 turn 時仍會由 `Stop` 顯示
+`idle`。Codex 也沒有 turn-error hook，所以 adapter 不會自動送 `error`。
+授權回答之後沒有立即觸發的 hook，`PostToolUse` 只能在該工具執行完後近似回到
+`working`；工具執行期間可能仍顯示 `waiting`。若 turn 被強制中斷而未觸發
+`Stop`，最後狀態也可能暫時保留。多個 Codex session 同時使用時仍是最後推送者
+覆蓋顯示（last-write-wins）。Codex transcript 不是穩定介面；格式若在未來版本
+改變，adapter 會 fail-open 並把用量顯示為未知，不會阻擋 Codex。
+
 ## 部署到其他機器
 
 每台插 Zima 的機器要：clone 本 repo、裝 hidapi + pip hid、

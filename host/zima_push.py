@@ -4,6 +4,7 @@
 Usage:
   zima_push.py model "Fable 5"          # set model name line
   zima_push.py status working           # idle|working|waiting|error
+  zima_push.py usage 62 41              # set 5h/7d usage; 255 = unknown
   zima_push.py info "~/git/foo"         # set info line
   zima_push.py statusline               # Claude Code statusline mode:
                                         #   reads statusline JSON on stdin,
@@ -124,7 +125,8 @@ def main():
         send([(CMD_STATUS, bytes([STATUS_CODES["waiting"]]))])
     elif mode == "usage":
         def clamp(s):
-            return max(0, min(100, int(s)))
+            value = int(s)
+            return 255 if value == 255 else max(0, min(100, value))
         send([(CMD_USAGE, bytes([clamp(sys.argv[2]), clamp(sys.argv[3])]))])
     elif mode == "statusline":
         try:

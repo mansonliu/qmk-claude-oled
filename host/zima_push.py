@@ -99,6 +99,18 @@ def main():
         send([(CMD_STATUS, bytes([code]))])
     elif mode == "info":
         send([(CMD_INFO, text_payload(sys.argv[2]))])
+    elif mode == "notification":
+        # Claude Code Notification hook: only real action-needed notifications
+        # (permission request / question) should trigger WAITING. The 60s-idle
+        # "waiting for your input" nag is just an idle conversation — ignore.
+        try:
+            data = json.load(sys.stdin)
+        except Exception:
+            return 0
+        msg = (data.get("message") or "").lower()
+        if "waiting for your input" in msg:
+            return 0
+        send([(CMD_STATUS, bytes([STATUS_CODES["waiting"]]))])
     elif mode == "usage":
         def clamp(s):
             return max(0, min(100, int(s)))

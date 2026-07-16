@@ -65,7 +65,7 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 | 鍵盤不在時 | host 全部靜默 exit 0，statusline/hooks 不受影響 |
 | 多 session | last-write-wins（HANDOFF 原暫定案，天然成立） |
 | waiting 提示 | OLED「INPUT」滿屏閃爍 + RGB 黃燈同相位閃爍(0.6s/0.3s) + 蜂鳴器上升雙音 |
-| 震動馬達 | 本片 Zima 沒焊馬達(選配)，HAPTIC 移除；提醒改walk板載蜂鳴器(AUDIO) |
+| 震動馬達 | 本片 Zima 沒焊馬達(選配)，HAPTIC 移除；提醒改走板載蜂鳴器(AUDIO) |
 | flash 已砍清單 | extrakey、RGB動畫引擎(working呼吸手寫)、開機音、one-shot、grave_esc/space_cadet/magic/tap_dance/combo/key_override/qmk_settings |
 
 ## 重要參考資料

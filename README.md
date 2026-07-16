@@ -47,15 +47,15 @@ CMD_INFO 協定仍接受但目前不顯示。
 
 ### 狀態回饋
 
-| 狀態 | OLED | RGB 底光 | 蜂鳴器 |
-|---|---|---|---|
-| idle | 模型名↔用量條輪替 | 關（刻意：亮燈＝有事） | — |
-| working | 星芒脈動 | 青色呼吸（手寫模擬） | — |
-| waiting | INPUT 滿屏閃爍 | 黃色同相位閃爍 | 上升雙音一聲 |
-| error | ERROR 滿屏 | 紅色恆亮 | — |
+| 狀態 | OLED | RGB 底光 |
+|---|---|---|
+| idle | 模型名↔用量條輪替 | 關（刻意：亮燈＝有事） |
+| working | 星芒脈動 | 青色呼吸（手寫模擬） |
+| waiting | INPUT 滿屏閃爍 | 黃色同相位閃爍 |
+| error | ERROR 滿屏 | 紅色恆亮 |
 
-註：本片 Zima 未焊震動馬達，HAPTIC 已移除改用板載蜂鳴器；為塞音效引擎，
-extrakey/RGB 動畫引擎/開機音/one-shot 都已裁掉（旋鈕 L1 = PgUp/PgDn）。
+註：本片 Zima 未焊震動馬達（HAPTIC 移除）；蜂鳴器提醒試過太大聲已取消，
+audio 停用。RGB 動畫引擎裁掉（working 呼吸為手寫模擬）。
 
 一小時沒收到 host 推送 → 顯示 `waiting for host...`。
 

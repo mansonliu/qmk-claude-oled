@@ -23,6 +23,10 @@ RAW_USAGE_PAGE = 0xFF60
 RAW_USAGE = 0x61
 REPORT_LEN = 32
 
+# Messages ride alongside the VIA/Vial protocol: byte 0 is a magic command id
+# VIA doesn't use, which the firmware handles in raw_hid_receive_kb().
+CLAUDE_MAGIC = 0x63
+
 CMD_MODEL = 0x01
 CMD_STATUS = 0x02
 CMD_INFO = 0x03
@@ -53,7 +57,7 @@ def send(reports):
             return False
         try:
             for cmd, payload in reports:
-                data = bytes([cmd]) + payload[: REPORT_LEN - 1]
+                data = bytes([CLAUDE_MAGIC, cmd]) + payload[: REPORT_LEN - 2]
                 data = data.ljust(REPORT_LEN, b"\x00")
                 dev.write(b"\x00" + data)  # leading report ID
         finally:

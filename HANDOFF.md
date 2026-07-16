@@ -26,8 +26,11 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 - [x] P0 鍵盤確認：**splitkb Zima**（4×3 + 旋鈕 + OLED 128×32 + RGB + 震動 + 蜂鳴器，
       atmega32u4 / atmel-dfu）。原韌體＝舊版 QMK 預設 keymap（VID 0xFEED），非 VIA/Vial
       → Raw HID 通道沒被佔用，直接刷自製韌體，VIA 衝突問題不存在
-- [x] P1 韌體：`~/git/vial-qmk/keyboards/splitkb/zima/keymaps/claude/`
-      編譯過（26502/28672，92%，audio/haptic/rgb 全保留）
+- [x] P1 韌體 v2＝**Vial 版**：`~/git/vial-qmk/keyboards/splitkb/zima/keymaps/vial/`
+      （v1 純 QMK keymaps/claude/ 已刪，因 Vial App 打不開、使用者要能改鍵）。
+      Claude 推送掛 raw_hid_receive_kb()、command id 0x63，與 VIA/Vial 協定共存。
+      28616/28672（99%！），代價：audio 停用＋砍 grave_esc/space_cadet/magic/
+      tap_dance/combo/key_override/qmk_settings。日後要加功能得先砍 haptic（約省 1.5KB）
 - [x] P1 host 端：不用現成框架，自寫 `host/zima_push.py`（hidapi 直推，約 60 行核心）
       — 調研過的 qmk-hid-host 等全是常駐程式，對「statusline 事件驅動推送」反而多餘
 - [x] P1 statusline：settings.json 已掛 `statusLine`（同一支腳本 statusline 模式，
@@ -36,7 +39,8 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
       Notification→waiting、SessionEnd→idle（皆 async + 靜默失敗）
 - [x] 刷韌體成功（2026-07-16，dfu-programmer 0x6800 bytes）；新韌體以 VID 0x8D1D
       重新列舉、Raw HID 介面（0xFF60/0x61）出現，host 推送 model/status 皆成功送達
-- [ ] 使用者目視確認 OLED/RGB/震動 實際效果 + 用一陣子的鍵位/亮度回饋
+- [x] Vial 版刷入成功（2026-07-16 稍晚）、0x63 協定推送驗證通過
+- [ ] 使用者確認 Vial App 能開啟＋OLED/RGB/震動實際效果＋用一陣子的鍵位/亮度回饋
 - [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
 - [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；
       settings.json 是機器專屬檔不進共享池，各機自行加
@@ -46,7 +50,8 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 | 決策點 | 結論 |
 |---|---|
 | host 框架 | 不用現成常駐程式，自寫 zima_push.py 事件驅動單發推送 |
-| VIA 衝突 | 不存在——刷非 VIA 韌體，Raw HID 專用 |
+| VIA/Vial 共存 | 協定加 0x63 magic byte，VIA 把未知 command id 轉 raw_hid_receive_kb() |
+| Vial 解鎖 | Esc(1,0)+右下(3,2)；UID 0xDB5A56202D2BEFD1 |
 | 裝置比對 | PID 0xF75B + VID 0x8D1D（新）/0xFEED（舊板上韌體），usage 0xFF60/0x61 |
 | 鍵盤不在時 | host 全部靜默 exit 0，statusline/hooks 不受影響 |
 | 多 session | last-write-wins（HANDOFF 原暫定案，天然成立） |

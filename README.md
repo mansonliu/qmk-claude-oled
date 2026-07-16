@@ -18,12 +18,15 @@ Claude Code statusline / hooks
 
 ## 韌體
 
-Keymap 在 vial-qmk fork：`keyboards/splitkb/zima/keymaps/claude/`
-（repo: mansonliu/vial-qmk，分支 vial）。**非 VIA/Vial** — Raw HID 通道專用於本專案。
+Keymap 在 vial-qmk fork：`keyboards/splitkb/zima/keymaps/vial/`
+（repo: mansonliu/vial-qmk，分支 vial）。**Vial 韌體** — 可用 Vial App 改鍵；
+Claude 推送用自訂 command id 0x63 掛在 raw_hid_receive_kb()，與 VIA/Vial 協定共存。
+flash 全滿（28616/28672），為此 audio 已停用（蜂鳴器沒聲音）。
+Vial 解鎖組合鍵：Esc + 右下鍵。
 
 ```sh
 cd ~/git/vial-qmk
-qmk flash -kb splitkb/zima -km claude   # 按板底 USB 口右邊的 reset 進 bootloader
+qmk flash -kb splitkb/zima -km vial   # 按板底 USB 口右邊的 reset 進 bootloader
 ```
 
 ### OLED 版面（21×4）
@@ -72,11 +75,13 @@ zima_push.py statusline          # statusline 模式：stdin JSON → 推送 + �
 
 ### Raw HID 協定（32-byte report）
 
-| byte 0 | 意義 | payload |
+byte 0 固定 0x63（VIA 未用的 command id，路由到 raw_hid_receive_kb）。
+
+| byte 1 | 意義 | payload |
 |---|---|---|
-| 0x01 | 模型名 | bytes 1..：NUL 結尾 ASCII，≤21 字 |
-| 0x02 | 狀態 | byte 1：0 idle / 1 working / 2 waiting / 3 error |
-| 0x03 | 資訊列 | bytes 1..：NUL 結尾 ASCII，≤21 字 |
+| 0x01 | 模型名 | bytes 2..：NUL 結尾 ASCII，≤21 字 |
+| 0x02 | 狀態 | byte 2：0 idle / 1 working / 2 waiting / 3 error |
+| 0x03 | 資訊列 | bytes 2..：NUL 結尾 ASCII，≤21 字 |
 
 裝置比對：PID `0xF75B`，VID `0x8D1D`（新韌體）或 `0xFEED`（舊），
 usage page `0xFF60` / usage `0x61`。

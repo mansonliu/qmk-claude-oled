@@ -60,7 +60,7 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 | 裝置比對 | PID 0xF75B + VID 0x8D1D（新）/0xFEED（舊板上韌體），usage 0xFF60/0x61 |
 | 鍵盤不在時 | host 全部靜默 exit 0，statusline/hooks 不受影響 |
 | 多 session | last-write-wins（HANDOFF 原暫定案，天然成立） |
-| waiting 提示 | OLED 反白字 + RGB 橘 + DRV2605L 震動一下 |
+| waiting 提示 | OLED「NEED INPUT」大字閃爍 + RGB 黃燈同相位閃爍(0.6s/0.3s) + 震動一下 |
 
 ## 重要參考資料
 

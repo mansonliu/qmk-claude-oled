@@ -34,7 +34,9 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
       印 `模型 | cwd` 並推送 CMD_MODEL + CMD_INFO）
 - [x] P2 agent 狀態：hooks 已掛 UserPromptSubmit→working、Stop→idle、
       Notification→waiting、SessionEnd→idle（皆 async + 靜默失敗）
-- [ ] 刷韌體（等使用者按板底 reset）＋ 實機驗證 OLED 顯示
+- [x] 刷韌體成功（2026-07-16，dfu-programmer 0x6800 bytes）；新韌體以 VID 0x8D1D
+      重新列舉、Raw HID 介面（0xFF60/0x61）出現，host 推送 model/status 皆成功送達
+- [ ] 使用者目視確認 OLED/RGB/震動 實際效果 + 用一陣子的鍵位/亮度回饋
 - [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
 - [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；
       settings.json 是機器專屬檔不進共享池，各機自行加

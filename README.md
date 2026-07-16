@@ -29,14 +29,15 @@ cd ~/git/vial-qmk
 qmk flash -kb splitkb/zima -km vial   # 按板底 USB 口右邊的 reset 進 bootloader
 ```
 
-### OLED 版面（21×4）
+### OLED 版面（12×16 加粗大字，兩行置中）
 
 ```
-Claude Code   L0      ← 標題 + 目前鍵層
-Fable 5               ← 模型名（host 推送）
-working /             ← 狀態 + 轉圈動畫
-~/git/qmk-claude-oled ← 資訊列（cwd）
+FABLE 5      ← 模型名
+WORKING /    ← 狀態（working 轉圈；waiting「NEED INPUT」閃爍）
 ```
+
+字型：glcdfont 0x20–0x5F 子集（bigfont.h），render 時像素放大 2 倍＋橫向 smear 加粗。
+CMD_INFO 協定仍接受但目前不顯示。
 
 ### 狀態回饋
 

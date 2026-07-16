@@ -40,6 +40,11 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 - [x] 刷韌體成功（2026-07-16，dfu-programmer 0x6800 bytes）；新韌體以 VID 0x8D1D
       重新列舉、Raw HID 介面（0xFF60/0x61）出現，host 推送 model/status 皆成功送達
 - [x] Vial 版刷入成功（2026-07-16 稍晚）、0x63 協定推送驗證通過
+- [x] OLED 改 12×16 加粗大字（使用者反映小字在桌上不顯眼）：上行模型名、
+      下行狀態（working 轉圈、waiting「NEED INPUT」閃爍 0.6s/0.3s）；
+      小字 cwd 資訊列取消（協定仍收 CMD_INFO 只是不顯示）；
+      字型＝glcdfont 0x20-0x5F 子集抽進 bigfont.h，render 時像素×2＋橫向 smear 加粗；
+      RGB 動畫只留 breathing（省 flash），25286/28672（88%）
 - [ ] 使用者確認 Vial App 能開啟＋OLED/RGB/震動實際效果＋用一陣子的鍵位/亮度回饋
 - [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
 - [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；

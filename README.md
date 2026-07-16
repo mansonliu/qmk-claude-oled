@@ -78,7 +78,9 @@ Tab             ↓         Enter
 zima_push.py model "Fable 5"     # 設模型名
 zima_push.py status working      # idle|working|waiting|error
 zima_push.py info "~/git/foo"    # 設資訊列
+zima_push.py usage 62 41         # 手動設用量 %（5h、7d）
 zima_push.py statusline          # statusline 模式：stdin JSON → 推送 + 印文字
+zima_push.py notification        # Notification hook 模式：過濾閒置提醒（見下）
 ```
 
 鍵盤沒插時全部靜默略過（exit 0），statusline/hooks 不會被拖垮。
@@ -103,12 +105,22 @@ usage page `0xFF60` / usage `0x61`。
 "statusLine": { "type": "command",
   "command": "python3 $HOME/git/qmk-claude-oled/host/zima_push.py statusline" },
 "hooks": {
-  "UserPromptSubmit": [ /* status working (async) */ ],
-  "Stop":             [ /* status idle    (async) */ ],
-  "Notification":     [ /* status waiting (async) */ ],
-  "SessionEnd":       [ /* status idle */ ]
+  "UserPromptSubmit": [{ "hooks": [{ "type": "command", "async": true, "timeout": 10,
+    "command": "python3 $HOME/git/qmk-claude-oled/host/zima_push.py status working 2>/dev/null || true" }] }],
+  "Stop":             [{ "hooks": [{ "type": "command", "async": true, "timeout": 10,
+    "command": "python3 $HOME/git/qmk-claude-oled/host/zima_push.py status idle 2>/dev/null || true" }] }],
+  "Notification":     [{ "hooks": [{ "type": "command", "async": true, "timeout": 10,
+    "command": "python3 $HOME/git/qmk-claude-oled/host/zima_push.py notification 2>/dev/null || true" }] }],
+  "SessionEnd":       [{ "hooks": [{ "type": "command", "timeout": 10,
+    "command": "python3 $HOME/git/qmk-claude-oled/host/zima_push.py status idle 2>/dev/null || true" }] }]
 }
 ```
+
+**Notification 必須走 `notification` 模式，不要直接 `status waiting`**：
+Claude Code 的 Notification 事件除了權限請求／提問，還包含「閒置 60 秒」
+的提醒（message 為 "Claude is waiting for your input"）。直接接 waiting
+會造成每次對話結束一分鐘後黃燈誤閃；`notification` 模式會過濾掉閒置提醒，
+只有真的需要回答時才觸發 WAITING。
 
 多 session：最後推送者蓋掉顯示（last-write-wins）。
 

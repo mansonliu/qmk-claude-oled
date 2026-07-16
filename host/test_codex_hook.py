@@ -20,6 +20,8 @@ class CodexHookTests(unittest.TestCase):
         self.assertEqual(
             calls,
             [
+                ("client", "codex"),
+                ("animation",),
                 ("model", "5.4 codex"),
                 ("usage", "255", "255"),
                 ("status", "working"),
@@ -89,6 +91,35 @@ class CodexHookTests(unittest.TestCase):
             zima_push.sys.argv = original_argv
             zima_push.send = original_send
         self.assertEqual(reports, [(zima_push.CMD_USAGE, bytes([255, 255]))])
+
+    def test_zima_push_encodes_codex_client(self):
+        reports = []
+        original_argv = zima_push.sys.argv
+        original_send = zima_push.send
+        try:
+            zima_push.sys.argv = ["zima_push.py", "client", "codex"]
+            zima_push.send = lambda value: reports.extend(value)
+            self.assertEqual(zima_push.main(), 0)
+        finally:
+            zima_push.sys.argv = original_argv
+            zima_push.send = original_send
+        self.assertEqual(reports, [(zima_push.CMD_CLIENT, bytes([1]))])
+
+    def test_zima_push_encodes_host_animation_settings(self):
+        reports = []
+        original_argv = zima_push.sys.argv
+        original_send = zima_push.send
+        try:
+            zima_push.sys.argv = ["zima_push.py", "animation"]
+            zima_push.send = lambda value: reports.extend(value)
+            self.assertEqual(zima_push.main(), 0)
+        finally:
+            zima_push.sys.argv = original_argv
+            zima_push.send = original_send
+        self.assertEqual(
+            reports,
+            [(zima_push.CMD_ANIMATION, bytes([5, 25, 4, 11, 4, 4, 1, 12, 4, 0x3C]))],
+        )
 
 
 if __name__ == "__main__":

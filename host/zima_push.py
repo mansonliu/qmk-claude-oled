@@ -5,6 +5,8 @@ Usage:
   zima_push.py model "Fable 5"          # set model name line
   zima_push.py status working           # idle|working|waiting|error
   zima_push.py usage 62 41              # set 5h/7d usage; 255 = unknown
+  zima_push.py client codex              # claude|codex animation identity
+  zima_push.py animation                 # push host-side Codex animation settings
   zima_push.py info "~/git/foo"         # set info line
   zima_push.py statusline               # Claude Code statusline mode:
                                         #   reads statusline JSON on stdin,
@@ -33,8 +35,26 @@ CMD_MODEL = 0x01
 CMD_STATUS = 0x02
 CMD_INFO = 0x03
 CMD_USAGE = 0x04  # payload: five-hour %, seven-day % (0-100, 255 = unknown)
+CMD_CLIENT = 0x05
+CMD_ANIMATION = 0x06
 
 STATUS_CODES = {"idle": 0, "working": 1, "waiting": 2, "error": 3}
+CLIENT_CODES = {"claude": 0, "codex": 1}
+
+# Codex animation parameters live here on the host. After the supporting
+# firmware is installed once, changing these values does not require flashing.
+CODEX_ANIMATION = {
+    "left_x": 5,
+    "right_x": 25,
+    "top_page": 4,
+    "bottom_page": 11,
+    "horizontal_segments": 4,
+    "dot_count": 4,
+    "dot_spacing": 1,
+    "frame_ms": 120,
+    "dot_width": 4,
+    "dot_bits": 0x3C,
+}
 
 
 def find_device():
@@ -74,6 +94,36 @@ def text_payload(s):
     # OLED text line: 21 visible columns, ASCII only (QMK font).
     s = s.encode("ascii", "replace")[:21]
     return s + b"\x00"
+
+
+def animation_payload(values=None):
+    """Encode Codex orbit settings; optional values are the ten CLI fields."""
+    if values:
+        if len(values) != 10:
+            raise ValueError("animation needs 10 values")
+        parsed = [int(value, 0) for value in values]
+        config = dict(zip(CODEX_ANIMATION, parsed))
+    else:
+        config = CODEX_ANIMATION
+
+    frame_ms = config["frame_ms"]
+    encoded = [
+        config["left_x"],
+        config["right_x"],
+        config["top_page"],
+        config["bottom_page"],
+        config["horizontal_segments"],
+        config["dot_count"],
+        config["dot_spacing"],
+        (frame_ms + 5) // 10,
+        config["dot_width"],
+        config["dot_bits"],
+    ]
+    if any(value < 0 or value > 255 for value in encoded):
+        raise ValueError("animation values must encode as bytes")
+    if not 30 <= frame_ms <= 2550:
+        raise ValueError("frame_ms must be 30..2550")
+    return bytes(encoded)
 
 
 def strip_version(name):
@@ -128,6 +178,19 @@ def main():
             value = int(s)
             return 255 if value == 255 else max(0, min(100, value))
         send([(CMD_USAGE, bytes([clamp(sys.argv[2]), clamp(sys.argv[3])]))])
+    elif mode == "client":
+        code = CLIENT_CODES.get(sys.argv[2])
+        if code is None:
+            print(f"unknown client: {sys.argv[2]}", file=sys.stderr)
+            return 2
+        send([(CMD_CLIENT, bytes([code]))])
+    elif mode == "animation":
+        try:
+            payload = animation_payload(sys.argv[2:])
+        except (TypeError, ValueError) as error:
+            print(f"invalid animation: {error}", file=sys.stderr)
+            return 2
+        send([(CMD_ANIMATION, payload)])
     elif mode == "statusline":
         try:
             data = json.load(sys.stdin)
@@ -143,6 +206,7 @@ def main():
 
         u5, u7 = pct("five_hour"), pct("seven_day")
         send([
+            (CMD_CLIENT, bytes([CLIENT_CODES["claude"]])),
             (CMD_MODEL, text_payload(strip_version(model))),
             (CMD_INFO, text_payload(info)),
             (CMD_USAGE, bytes([u5, u7])),

@@ -150,6 +150,8 @@ def handle_event(
     push: Callable[..., None] = push_zima,
 ) -> None:
     """Push metadata first and the requested lifecycle state last."""
+    push("client", "codex")
+    push("animation")
     model = extract_model(event)
     if model is not None:
         push("model", format_model_for_oled(model))

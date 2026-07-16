@@ -34,9 +34,9 @@ qmk flash -kb splitkb/zima -km vial   # 按板底 USB 口右邊的 reset 進 boo
 旋轉 270°（keymap oled_init_user；zima.c 已改為尊重 user 覆寫）。四個場景：
 
 - **靜置**：模型名直排大字（字母 12×16、版號同大小、小數點縮成小方點），
-  每 5 秒與「5H 用量條」輪替——全寬直條由下往上填滿百分比（無數字）
-- **working**：32×48 Claude 星芒置中脈動（光芒長短粗細照官方時鐘方位，
-  4 幀 62–100% 縮放、0-1-2-3-2-1 呼吸循環）
+  每 5 秒與用量條輪替——優先顯示 5H，沒有 5H 時顯示 7D；全寬直條由下往上填滿百分比（無數字）
+- **working**：Claude 使用 32×48 星芒置中脈動；Codex 顯示四個相鄰亮點，
+  像短列車沿著看不見的大型橫向長方形軌道繞行
 - **waiting**：INPUT 五個 18×24 大字滿屏、0.6s/0.3s 閃爍（黃色底光同相位）
 - **error**：ERROR 滿屏
 - **待機（無訊號）**：靜態滿版星芒——開機後尚未收到推送、或超過 1 小時沒推送時顯示
@@ -50,7 +50,7 @@ CMD_INFO 協定仍接受但目前不顯示。
 | 狀態 | OLED | RGB 底光 |
 |---|---|---|
 | idle | 模型名↔用量條輪替 | 關（刻意：亮燈＝有事） |
-| working | 星芒脈動 | 青色呼吸（手寫模擬） |
+| working | Claude 星芒／Codex 四點列車長方形繞行 | 青色呼吸（手寫模擬） |
 | waiting | INPUT 滿屏閃爍 | 黃色同相位閃爍 |
 | error | ERROR 滿屏 | 紅色恆亮 |
 
@@ -79,6 +79,8 @@ zima_push.py model "Fable 5"     # 設模型名
 zima_push.py status working      # idle|working|waiting|error
 zima_push.py info "~/git/foo"    # 設資訊列
 zima_push.py usage 62 41         # 手動設用量 %（5h、7d）
+zima_push.py client codex        # claude|codex，選擇思考動畫
+zima_push.py animation           # 推送 host 端 Codex 動畫參數
 zima_push.py statusline          # statusline 模式：stdin JSON → 推送 + 印文字
 zima_push.py notification        # Notification hook 模式：過濾閒置提醒（見下）
 ```
@@ -95,6 +97,8 @@ byte 0 固定 0x63（VIA 未用的 command id，路由到 raw_hid_receive_kb）�
 | 0x02 | 狀態 | byte 2：0 idle / 1 working / 2 waiting / 3 error |
 | 0x03 | 資訊列 | bytes 2..：NUL 結尾 ASCII，≤21 字 |
 | 0x04 | 用量 | byte 2：5小時窗 %、byte 3：7天窗 %（0–100，255=未知） |
+| 0x05 | 用戶端 | byte 2：0 Claude / 1 Codex |
+| 0x06 | Codex 動畫 | 左右邊界、上下頁面、水平節點、點數、間距、速度、點寬與點陣 |
 
 裝置比對：PID `0xF75B`，VID `0x8D1D`（新韌體）或 `0xFEED`（舊），
 usage page `0xFF60` / usage `0x61`。
@@ -129,6 +133,12 @@ Claude Code 的 Notification 事件除了權限請求／提問，還包含「閒
 `host/codex_hook.py` 讀取 Codex hook 的 stdin JSON，並呼叫既有的
 `host/zima_push.py`，不自行實作 HID：
 
+- 每個事件會先送出 `client codex`；Claude Code statusLine 則送出
+  `client claude`，讓韌體自動選擇各自的思考動畫
+- 每個 Codex 事件也會由 `host/zima_push.py` 推送 `CODEX_ANIMATION`。
+  安裝支援此協定的韌體一次後，修改軌道比例、點數、列車間距、速度或點大小
+  只需改 Python 設定，不必再燒錄鍵盤
+
 - `SessionStart`：設定模型名、刷新用量、設為 `idle`
 - `UserPromptSubmit`：設定模型名、刷新用量、設為 `working`
 - `PermissionRequest`：設定模型名、刷新用量、設為 `waiting`
@@ -136,7 +146,8 @@ Claude Code 的 Notification 事件除了權限請求／提問，還包含「閒
 - `Stop`：設定模型名、刷新用量、設為 `idle`
 
 用量取 `transcript_path` JSONL 最後一筆 `token_count`：300 分鐘視窗映射成
-5h，10080 分鐘視窗映射成 7d；缺值或解析失敗送 `255`（未知）。為避免 hook
+5h，10080 分鐘視窗映射成 7d；OLED 優先顯示 5H，只有 7D 時就顯示 7D。
+缺值或解析失敗送 `255`（未知）。為避免 hook
 因大型 transcript 變慢，只搜尋檔案尾端 1 MiB。
 
 在 `~/.codex/config.toml` 加入以下設定（若 repo 不在

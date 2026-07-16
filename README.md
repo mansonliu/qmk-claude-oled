@@ -39,6 +39,7 @@ qmk flash -kb splitkb/zima -km vial   # 按板底 USB 口右邊的 reset 進 boo
   4 幀 62–100% 縮放、0-1-2-3-2-1 呼吸循環）
 - **waiting**：INPUT 五個 18×24 大字滿屏、0.6s/0.3s 閃爍（黃色底光同相位）
 - **error**：ERROR 滿屏
+- **待機（無訊號）**：靜態滿版星芒——開機後尚未收到推送、或超過 1 小時沒推送時顯示
 
 字型：glcdfont 0x20–0x5F 子集（bigfont.h）任意倍率放大＋橫向 smear 加粗；
 星芒 4 幀點陣在 spark.h（keymap 目錄有生成腳本邏輯，見 git log）。

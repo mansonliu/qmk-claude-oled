@@ -4,53 +4,64 @@
 
 ## 任務目標
 
-讓使用者的 QMK 鍵盤（帶 OLED 小螢幕，原本顯示鍵層與圖片）即時顯示 Claude Code 目前使用的模型名稱（如 Fable 5、Opus 4.8），未來可擴充顯示 agent 狀態（工作中／等確認／出錯）。
+讓使用者的 QMK 鍵盤（帶 OLED 小螢幕）即時顯示 Claude Code 目前使用的模型名稱
+（如 Fable 5、Opus 4.8）與 agent 狀態（工作中／等確認／出錯），按鍵兼作 Claude Code 操控鍵。
 
-靈感來源：OpenAI × Work Louder 的 Codex Micro 巨集鍵盤（LED 顯示 agent 狀態），報導見 https://www.hot3c.com/read.asp?class=11&id=27624
+靈感來源：OpenAI × Work Louder 的 Codex Micro（LED 顯示 agent 狀態），
+https://www.hot3c.com/read.asp?class=11&id=27624
 
-## 架構（已定案）
+## 架構（已實作）
 
 ```
-Claude Code statusline（stdin JSON 含 model.display_name）
-      → host 端腳本（寫狀態檔或直接呼叫）
-      → Raw HID（僅 USB 有效，藍牙不行）
-      → QMK 韌體 raw_hid_receive() → oled_task_user() 畫到 OLED
+Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
+      → host/zima_push.py（Python + hidapi，best-effort 靜默失敗）
+      → USB Raw HID（usage page 0xFF60 / usage 0x61，32-byte report）
+      → QMK raw_hid_receive() → OLED 顯示 + RGB 底光變色 + waiting 時震動
 ```
 
-## 目前進度
+細節（協定、鍵位、OLED 版面、狀態表）見 README.md。
 
-- [x] 可行性確認：QMK Raw HID 是社群顯示 host 資訊的標準做法
-- [x] 調研現成專案（2026-07-16，見下方參考資料）——結論：兩個半段各有成熟專案，但「Claude Code 模型名 → QMK OLED」完整組合沒人做過，需自己寫膠水
-- [ ] P0：等鍵盤到手，確認：型號、韌體是否 VIA、OLED 解析度、keymap 原始碼位置
-- [ ] P1：選定 host 端框架（候選見下）並打通 Raw HID 顯示任意字串
-- [ ] P1：寫 Claude Code statusline 腳本把 model.display_name 餵給 host 端
-- [ ] P2：多 session 行為（暫定：最後有動作的 session 蓋掉顯示）
-- [ ] P2：agent 狀態顯示（等確認／工作中），可參考 blinkstick-claude 的 hooks 接法
-- [ ] P3：部署到其他機器（host 腳本每台插鍵盤的機器都要裝）
+## 目前進度（2026-07-16，Mac Mini）
+
+- [x] P0 鍵盤確認：**splitkb Zima**（4×3 + 旋鈕 + OLED 128×32 + RGB + 震動 + 蜂鳴器，
+      atmega32u4 / atmel-dfu）。原韌體＝舊版 QMK 預設 keymap（VID 0xFEED），非 VIA/Vial
+      → Raw HID 通道沒被佔用，直接刷自製韌體，VIA 衝突問題不存在
+- [x] P1 韌體：`~/git/vial-qmk/keyboards/splitkb/zima/keymaps/claude/`
+      編譯過（26502/28672，92%，audio/haptic/rgb 全保留）
+- [x] P1 host 端：不用現成框架，自寫 `host/zima_push.py`（hidapi 直推，約 60 行核心）
+      — 調研過的 qmk-hid-host 等全是常駐程式，對「statusline 事件驅動推送」反而多餘
+- [x] P1 statusline：settings.json 已掛 `statusLine`（同一支腳本 statusline 模式，
+      印 `模型 | cwd` 並推送 CMD_MODEL + CMD_INFO）
+- [x] P2 agent 狀態：hooks 已掛 UserPromptSubmit→working、Stop→idle、
+      Notification→waiting、SessionEnd→idle（皆 async + 靜默失敗）
+- [ ] 刷韌體（等使用者按板底 reset）＋ 實機驗證 OLED 顯示
+- [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
+- [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；
+      settings.json 是機器專屬檔不進共享池，各機自行加
 
 ## 關鍵決策摘要
 
 | 決策點 | 結論 |
 |---|---|
-| 鍵盤怎麼知道模型 | 韌體自己不可能知道，必須 host 端經 Raw HID 推送 |
-| 連線方式 | Raw HID 只支援 USB；藍牙模式下此功能無效 |
-| Claude Code 端掛載點 | statusline（每次回覆更新、JSON 自帶 model.display_name），不用常駐程式；agent 狀態才用 hooks |
-| VIA 衝突 | 若韌體開 VIA_ENABLE，Raw HID 通道被 VIA 佔用，要用 VIA custom command 包資料或關 VIA |
-| host 框架傾向 | 主力機是 macOS：先試 qmk-oled-api（Rust、可畫圖）或 Klathmon/qmk-hid-display（Node、明確支援 macOS）；zzeneg/qmk-hid-host 最好擴充但 macOS 僅部分支援 |
-| 資料落點 | GitHub repo（純程式碼、跨機器、可公開），不放 OneDrive |
+| host 框架 | 不用現成常駐程式，自寫 zima_push.py 事件驅動單發推送 |
+| VIA 衝突 | 不存在——刷非 VIA 韌體，Raw HID 專用 |
+| 裝置比對 | PID 0xF75B + VID 0x8D1D（新）/0xFEED（舊板上韌體），usage 0xFF60/0x61 |
+| 鍵盤不在時 | host 全部靜默 exit 0，statusline/hooks 不受影響 |
+| 多 session | last-write-wins（HANDOFF 原暫定案，天然成立） |
+| waiting 提示 | OLED 反白字 + RGB 橘 + DRV2605L 震動一下 |
 
 ## 重要參考資料
 
-現成專案（2026-07-16 調研）：
-
-- https://github.com/danielrosehill/Claude-Macropad-V2 — 專為 Claude Code 做的巨集鍵盤（ESP32/RP2040 非 QMK），host 驅動狀態 LED，hooks 接法可參考
-- https://github.com/jondkinney/blinkstick-claude — Claude Code hooks（UserPromptSubmit/Stop/PermissionRequest/PostToolUse）→ HID LED 裝置，含多 session 識別
-- https://github.com/zzeneg/qmk-hid-host — Rust host 常駐程式，enum data ID 設計最好擴充；macOS 部分支援
-- https://github.com/Klathmon/qmk-hid-display — Node.js host，支援 macOS/Windows
-- https://github.com/dob9601/qmk-oled-api — Rust crate，host 直接把 OLED 當畫布畫圖，韌體端只貼一小段
 - https://docs.qmk.fm/features/rawhid — QMK Raw HID 官方文件
 - https://code.claude.com/docs/en/statusline — Claude Code statusline 官方文件
+- 調研過的現成專案（最終未採用，接法可參考）：
+  danielrosehill/Claude-Macropad-V2、jondkinney/blinkstick-claude、
+  zzeneg/qmk-hid-host、Klathmon/qmk-hid-display、dob9601/qmk-oled-api
 
 ## 下次接續的開頭
 
-使用者說「請讀 HANDOFF.md，繼續 QMK OLED 顯示 Claude 模型」即接手。第一步是問到鍵盤型號與韌體狀況（P0 那行的四項），再決定 host 框架。工作目錄：`cd ~/git/qmk-claude-oled`。
+工作目錄 `cd ~/git/qmk-claude-oled`。若韌體還沒刷成：`cd ~/git/vial-qmk &&
+qmk flash -kb splitkb/zima -km claude`，請使用者按板底 USB 口右邊 reset。
+刷完驗證：`python3 host/zima_push.py model "Test"` 應出現在 OLED 第二行；
+開新 Claude Code session 應自動更新（statusline 已掛全域 settings.json）。
+之後的重點是 P3 部署其他機器與實際使用回饋（鍵位、震動強度、RGB 亮度微調）。

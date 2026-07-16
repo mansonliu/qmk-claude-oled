@@ -30,6 +30,7 @@ CLAUDE_MAGIC = 0x63
 CMD_MODEL = 0x01
 CMD_STATUS = 0x02
 CMD_INFO = 0x03
+CMD_USAGE = 0x04  # payload: five-hour %, seven-day % (0-100, 255 = unknown)
 
 STATUS_CODES = {"idle": 0, "working": 1, "waiting": 2, "error": 3}
 
@@ -98,6 +99,10 @@ def main():
         send([(CMD_STATUS, bytes([code]))])
     elif mode == "info":
         send([(CMD_INFO, text_payload(sys.argv[2]))])
+    elif mode == "usage":
+        def clamp(s):
+            return max(0, min(100, int(s)))
+        send([(CMD_USAGE, bytes([clamp(sys.argv[2]), clamp(sys.argv[3])]))])
     elif mode == "statusline":
         try:
             data = json.load(sys.stdin)
@@ -106,11 +111,19 @@ def main():
         model = (data.get("model") or {}).get("display_name") or "?"
         cwd = (data.get("workspace") or {}).get("current_dir") or data.get("cwd") or ""
         info = shorten_dir(cwd, os.path.expanduser("~"))
+
+        def pct(window):
+            v = ((data.get("rate_limits") or {}).get(window) or {}).get("used_percentage")
+            return 255 if v is None else max(0, min(100, int(round(v))))
+
+        u5, u7 = pct("five_hour"), pct("seven_day")
         send([
             (CMD_MODEL, text_payload(model)),
             (CMD_INFO, text_payload(info)),
+            (CMD_USAGE, bytes([u5, u7])),
         ])
-        print(f"{model} | {info}")
+        usage_txt = "" if u5 == 255 else f" | 5h {u5}%"
+        print(f"{model} | {info}{usage_txt}")
     else:
         print(f"unknown command: {mode}", file=sys.stderr)
         return 2

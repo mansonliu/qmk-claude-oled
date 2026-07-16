@@ -45,7 +45,11 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
       小字 cwd 資訊列取消（協定仍收 CMD_INFO 只是不顯示）；
       字型＝glcdfont 0x20-0x5F 子集抽進 bigfont.h，render 時像素×2＋橫向 smear 加粗；
       RGB 動畫只留 breathing（省 flash），25286/28672（88%）
-- [ ] 使用者確認 Vial App 能開啟＋OLED/RGB/震動實際效果＋用一陣子的鍵位/亮度回饋
+- [x] Vial App 開啟確認 OK；OLED 已迭代成直式（鍵盤橫放）四場景版，
+      細節見 README；靜置輪替模型名↔5H全寬用量條（rate_limits 來自 statusline JSON，
+      Pro/Max 第一次 API 回應後才有）；星芒幾何是使用者對照官方 logo 口頭校過的
+      （11/1 點最長粗、1 點略短於 11、7 點最短、9 點最細、4/5 點靠攏）
+- [ ] 用一陣子的鍵位/視覺回饋；鍵位建議清單已給過（見對話 2026-07-16），使用者未定案
 - [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
 - [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；
       settings.json 是機器專屬檔不進共享池，各機自行加

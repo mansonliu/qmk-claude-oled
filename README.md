@@ -29,14 +29,19 @@ cd ~/git/vial-qmk
 qmk flash -kb splitkb/zima -km vial   # 按板底 USB 口右邊的 reset 進 bootloader
 ```
 
-### OLED 版面（12×16 加粗大字，兩行置中）
+### OLED 版面（直式 32×128，鍵盤橫放）
 
-```
-FABLE 5      ← 模型名
-WORKING /    ← 狀態（working 轉圈；waiting「NEED INPUT」閃爍）
-```
+旋轉 270°（keymap oled_init_user；zima.c 已改為尊重 user 覆寫）。四個場景：
 
-字型：glcdfont 0x20–0x5F 子集（bigfont.h），render 時像素放大 2 倍＋橫向 smear 加粗。
+- **靜置**：模型名直排大字（字母 12×16、版號同大小、小數點縮成小方點），
+  每 5 秒與「5H 用量條」輪替——全寬直條由下往上填滿百分比（無數字）
+- **working**：32×48 Claude 星芒置中脈動（光芒長短粗細照官方時鐘方位，
+  4 幀 62–100% 縮放、0-1-2-3-2-1 呼吸循環）
+- **waiting**：INPUT 五個 18×24 大字滿屏、0.6s/0.3s 閃爍（黃色底光同相位）
+- **error**：ERROR 滿屏
+
+字型：glcdfont 0x20–0x5F 子集（bigfont.h）任意倍率放大＋橫向 smear 加粗；
+星芒 4 幀點陣在 spark.h（keymap 目錄有生成腳本邏輯，見 git log）。
 CMD_INFO 協定仍接受但目前不顯示。
 
 ### 狀態回饋
@@ -83,6 +88,7 @@ byte 0 固定 0x63（VIA 未用的 command id，路由到 raw_hid_receive_kb）�
 | 0x01 | 模型名 | bytes 2..：NUL 結尾 ASCII，≤21 字 |
 | 0x02 | 狀態 | byte 2：0 idle / 1 working / 2 waiting / 3 error |
 | 0x03 | 資訊列 | bytes 2..：NUL 結尾 ASCII，≤21 字 |
+| 0x04 | 用量 | byte 2：5小時窗 %、byte 3：7天窗 %（0–100，255=未知） |
 
 裝置比對：PID `0xF75B`，VID `0x8D1D`（新韌體）或 `0xFEED`（舊），
 usage page `0xFF60` / usage `0x61`。

@@ -14,6 +14,7 @@ silently so statusline/hooks never break.
 """
 import json
 import os
+import re
 import sys
 
 # Zima: current QMK VID is 0x8D1D, older builds shipped 0xFEED. PID is stable.
@@ -74,6 +75,16 @@ def text_payload(s):
     return s + b"\x00"
 
 
+def strip_version(name):
+    # OLED shows the model family only: "Fable 5" -> "Fable",
+    # "Opus 4.8" -> "Opus". Trailing parentheticals go too.
+    name = re.sub(r"\s*\(.*\)$", "", name)
+    words = name.split()
+    while len(words) > 1 and re.fullmatch(r"[\d.]+", words[-1]):
+        words.pop()
+    return " ".join(words) or name
+
+
 def shorten_dir(path, home):
     if home and path.startswith(home):
         path = "~" + path[len(home):]
@@ -130,7 +141,7 @@ def main():
 
         u5, u7 = pct("five_hour"), pct("seven_day")
         send([
-            (CMD_MODEL, text_payload(model)),
+            (CMD_MODEL, text_payload(strip_version(model))),
             (CMD_INFO, text_payload(info)),
             (CMD_USAGE, bytes([u5, u7])),
         ])

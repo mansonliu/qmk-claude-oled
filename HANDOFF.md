@@ -52,6 +52,10 @@ Claude Code statusline（model.display_name + cwd）＋ hooks（agent 狀態）
 - [x] OLED 模型名去版號（2026-07-16）：host 端 `strip_version()`（"Fable 5"→"Fable"、
       "Opus 4.8"→"Opus"，尾端括號註記也去掉），只影響推到 OLED 的 CMD_MODEL；
       終端機 statusline 文字仍顯示完整名稱含版號；韌體不動
+- [x] RGB 開機紅燈修正（2026-08-23）：QMK 開機從 EEPROM 讀 RGB 設定（預設開啟＋紅色），
+      Vial 燈光頁關閉走 _noeeprom 存不回去 → 加 `keyboard_post_init_user()` 開機強制
+      `rgblight_disable_noeeprom()`，RGB 完全由狀態驅動（平常熄滅，working/waiting/error 才亮）；
+      另補 host stale（1hr 無推送）自動退回 idle 熄燈；26732/28672（93%），已刷入驗證
 - [ ] 用一陣子的鍵位/視覺回饋；鍵位建議清單已給過（見對話 2026-07-16），使用者未定案
 - [ ] P2 多 session：暫定 last-write-wins（已是天然行為，觀察夠不夠用）
 - [ ] P3 部署其他機器：host 腳本 + hidapi + settings 掛載（README 有步驟）；
